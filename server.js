@@ -104,6 +104,15 @@ const adminAcc = [
     }
 ]
 
+async function authenticateTokenAdmin(req) {
+    const authHeader = req.headers['authorization']
+    const token = authHeader && authHeader.split(' ')[1]
+    console.log(token)
+    if(!token) return false
+    if(token===process.env['token']) return token
+    return false
+}
+
 
 
 app.post('/admin/login', async (req, res) => {
@@ -181,10 +190,8 @@ app.post('/questions', async (req, res) => {
     token: String
     }
     */
-    console.log(req.body, token)
-    const question = req.body.data
-    const tok = req.body.token
-    if(tok===token) {
+    const question = req.body
+    if(authenticateTokenAdmin(req)) {
         const Question = (await pModels)[0]
         try {
             const q = new Question(question)
