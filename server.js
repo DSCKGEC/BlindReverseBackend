@@ -18,7 +18,7 @@ const roundTime = [{
 
 
 app.use(cors({
-    origin: ["http://localhost:3001", "https://antadrisht.vercel.app", "https://blindcoding.gdsckgec.in", "https://reversecoding.gdsckgec.in"],
+    origin: '*',
     optionsSuccessStatus: 200
 }));
 app.use(express.json())
@@ -419,9 +419,36 @@ app.post('/user/run', async (req, res) => {
     
 })
 
+app.post('/user/disqualify', async (req, res) => {
+    const token = await authenticateTokenUser(req)
+    if (!token) {
+        res.status(401)
+        res.send({
+            error: "No Token"
+        })
+        return
+    }
+    const [_, User] = await pModels
+
+    try {
+        const user = (await User.find({ token: token }))[0]
+        user.qualified = false
+        await user.save()
+        res.send({
+            message: "User disqualified"
+        })
+    } catch(error) {
+        console.log(error)
+        res.status(401)
+        res.send({
+            error: error
+        })
+    }
+})
+
 app.post('/user/submit', async (req, res) => {
     const token = await authenticateTokenUser(req)
-    // console.log(token)
+    console.log(token)
     if (!token) {
         res.status(401)
         res.send({
@@ -471,14 +498,16 @@ app.post('/user/submit', async (req, res) => {
         let correct=0
         try {
             for(let i=0; i<q.testcases.length; i++){
+                const reqBody = {
+                    source_code: code,
+                    language_id: langId,
+                    stdin: Buffer.from(q.testcases[i].input).toString('base64'),
+                    expected_output: Buffer.from(q.testcases[i].output).toString('base64')
+                }
+                console.log(reqBody)
                 const resp = (await (await fetch(`${ judge }/submissions/?base64_encoded=true&wait=true`, {
                     method: 'POST',
-                    body: JSON.stringify({
-                        source_code: code,
-                        language_id: langId,
-                        stdin: Buffer.from(q.testcases[i].input).toString('base64'),
-                        expected_output: Buffer.from(q.testcases[i].output).toString('base64')
-                    }),
+                    body: JSON.stringify(reqBody),
 	               headers: {'Content-Type': 'application/json'}
                 })).json())
                 console.log(resp)
@@ -494,7 +523,7 @@ app.post('/user/submit', async (req, res) => {
         return
     }
         user.points = (correct*100)/q.testcases.length
-        if(user.points>75) {
+        if(user.points>50) {
             user.qualified = true
         } else {
             user.qualified = false
@@ -508,9 +537,9 @@ app.get('/leaderboard/:roundNo', async (req, res) => {
     const roundNo = req.params.roundNo-1
     const users = await User.find()
     users.sort((a, b) => {
-        if(a.points[roundNo] > b.points[roundNo]) {
+        if(a.points > b.points) {
             return 1
-        } else if(a.points[roundNo] < b.points[roundNo]) {
+        } else if(a.points < b.points) {
             return -1
         } else {
             if(a.endTime[roundNo] - a.startTime[roundNo] > b.endTime[roundNo] - b.startTime[roundNo]) {
@@ -521,7 +550,7 @@ app.get('/leaderboard/:roundNo', async (req, res) => {
         }
     })
 
-    res.send(users.filter(user => user.endTime[roundNo]))
+    res.send(users.filter(user => user.endTime[roundNo] && user.qualified))
 })
 
 app.listen(port, () => {
