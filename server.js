@@ -347,13 +347,13 @@ app.post('/user/start', async (req, res) => {
             })
             return
         }
-        if(user.startTime[roundNo-1]) {
-            res.status(401)
-            res.send({
-                error: "User already started the round"
-            })
-            return
-        }
+        // if(user.startTime[roundNo-1]) {
+        //     res.status(401)
+        //     res.send({
+        //         error: "User already started the round"
+        //     })
+        //     return
+        // }
         user.startTime[roundNo-1] = Date.now()
         // Get a random question from the round
         const question = await Question.find({ roundNo: roundNo }).skip(Math.floor(Math.random() * await Question.countDocuments({ roundNo: roundNo }))).limit(1)
