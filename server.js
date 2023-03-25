@@ -240,7 +240,7 @@ app.post('/user/login', async (req, res) => {
     const userId = req.body.userId
     const password = req.body.password
     const User = (await pModels)[1]
-    const resp = await fetch(`https://tessarus-staging.gdsckgec.in/api/events/checkin/`, {
+    const resp = await fetch(`https://tessarus.gdsckgec.in/api/events/checkin/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -356,8 +356,9 @@ app.post('/user/start', async (req, res) => {
         // }
         user.startTime[roundNo-1] = Date.now()
         // Get a random question from the round
-        const question = await Question.find({ roundNo: roundNo }).skip(Math.floor(Math.random() * await Question.countDocuments({ roundNo: roundNo }))).limit(1)
-        user.questions[roundNo-1] = question[0]._id
+        const questions = await Question.find({ roundNo: roundNo })
+        const question = questions[Math.floor(Math.random()*questions.length)];
+        user.questions[roundNo-1] = question._id
         console.log(user)
         await user.save()
         res.send(question)
@@ -538,9 +539,9 @@ app.get('/leaderboard/:roundNo', async (req, res) => {
     const users = await User.find()
     users.sort((a, b) => {
         if(a.points > b.points) {
-            return 1
-        } else if(a.points < b.points) {
             return -1
+        } else if(a.points < b.points) {
+            return 1
         } else {
             if(a.endTime[roundNo] - a.startTime[roundNo] > b.endTime[roundNo] - b.startTime[roundNo]) {
                 return 1
@@ -550,7 +551,7 @@ app.get('/leaderboard/:roundNo', async (req, res) => {
         }
     })
 
-    res.send(users.filter(user => user.endTime[roundNo] && user.qualified))
+    res.send(users.filter(user => user.endTime[roundNo]))
 })
 
 app.listen(port, () => {
